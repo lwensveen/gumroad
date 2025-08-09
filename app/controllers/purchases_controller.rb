@@ -449,8 +449,8 @@ class PurchasesController < ApplicationController
       return render_error("Cookies are not enabled on your browser. Please enable cookies and refresh this page before continuing.") if contains_paid_purchase && browser_guid.blank?
 
       # Verify reCAPTCHA response
-      unless skip_recaptcha?
-        render_error("Sorry, we could not verify the CAPTCHA. Please try again.") unless valid_recaptcha_response_and_hostname?(site_key: GlobalConfig.get("RECAPTCHA_MONEY_SITE_KEY"))
+      if !skip_recaptcha? && !valid_recaptcha_response_and_hostname?(site_key: GlobalConfig.get("RECAPTCHA_MONEY_SITE_KEY"))
+        render_error("Sorry, we could not verify the CAPTCHA. Please try again.")
       end
     end
 
@@ -552,7 +552,7 @@ class PurchasesController < ApplicationController
     end
 
     def require_email_confirmation
-      return if ActiveSupport::SecurityUtils.secure_compare(@purchase.email, params[:email].to_s)
+      return if ActiveSupport::SecurityUtils.secure_compare(@purchase.email.to_s.strip.downcase, params[:email].to_s.strip.downcase)
 
       if params[:email].blank?
         flash[:warning] = "Please enter the purchase's email address to generate the invoice."
