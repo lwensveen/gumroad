@@ -158,23 +158,23 @@ describe PurchasesController, :vcr do
         giftee_email = "giftee@foo.com"
         gift = create(:gift, gifter_email:, giftee_email:, link: product)
         gifter_purchase = create(:purchase, link: product,
-                                            seller:,
-                                            price_cents: product.price_cents,
-                                            email: gifter_email,
-                                            purchase_state: "successful",
-                                            is_gift_sender_purchase: true,
-                                            stripe_transaction_id: "ch_zitkxbhds3zqlt",
-                                            can_contact: true)
+                                 seller:,
+                                 price_cents: product.price_cents,
+                                 email: gifter_email,
+                                 purchase_state: "successful",
+                                 is_gift_sender_purchase: true,
+                                 stripe_transaction_id: "ch_zitkxbhds3zqlt",
+                                 can_contact: true)
 
         gift.gifter_purchase = gifter_purchase
 
         gift.giftee_purchase = create(:purchase, link: product,
-                                                 seller:,
-                                                 email: giftee_email,
-                                                 price_cents: 0,
-                                                 is_gift_receiver_purchase: true,
-                                                 purchase_state: "gift_receiver_purchase_successful",
-                                                 can_contact: true)
+                                      seller:,
+                                      email: giftee_email,
+                                      price_cents: 0,
+                                      is_gift_receiver_purchase: true,
+                                      purchase_state: "gift_receiver_purchase_successful",
+                                      can_contact: true)
         gift.mark_successful
         gift.save!
         put :update, params: { id: ObfuscateIds.encrypt(gifter_purchase.id), giftee_email: "new_giftee@example.com" }
@@ -262,7 +262,7 @@ describe PurchasesController, :vcr do
       before do
         @l = create(:product, user: seller)
         @p = create(:purchase_in_progress, link: @l, seller: @l.user, price_cents: 100, total_transaction_cents: 100, fee_cents: 30,
-                                           chargeable: create(:chargeable))
+                    chargeable: create(:chargeable))
         @p.process!
         @p.mark_successful!
         @obfuscated_id = ObfuscateIds.encrypt(@p.id)
@@ -294,7 +294,7 @@ describe PurchasesController, :vcr do
       it "404s for free 0+ purchases" do
         l = create(:product, price_range: "0+", price_cents: 0, user: seller)
         p = create(:purchase, link: l, seller: l.user, price_cents: 0, total_transaction_cents: 0,
-                              stripe_fingerprint: nil, stripe_transaction_id: nil)
+                   stripe_fingerprint: nil, stripe_transaction_id: nil)
         put :refund, params: { id: ObfuscateIds.encrypt(p.id), format: :json }
         expect(response.parsed_body).to eq "success" => false, "error" => "Not found"
         expect(response).to have_http_status(:not_found)
@@ -336,8 +336,8 @@ describe PurchasesController, :vcr do
         allow_any_instance_of(User).to receive(:native_paypal_payment_enabled?).and_return(true)
 
         purchase = create(:purchase, link: @l, charge_processor_id: PaypalChargeProcessor.charge_processor_id,
-                                     merchant_account: create(:merchant_account_paypal, charge_processor_merchant_id: "EF7UQSZMFR3UU"),
-                                     paypal_order_id: "36842509RK4544740", stripe_transaction_id: "8LE286804S000725B")
+                          merchant_account: create(:merchant_account_paypal, charge_processor_merchant_id: "EF7UQSZMFR3UU"),
+                          paypal_order_id: "36842509RK4544740", stripe_transaction_id: "8LE286804S000725B")
 
         put :refund, params: { id: purchase.external_id, format: :json }
 
@@ -500,23 +500,23 @@ describe PurchasesController, :vcr do
         giftee_email = "giftee@domain.org"
         gift = create(:gift, gifter_email:, giftee_email:, link: product)
         gifter_purchase = create(:purchase, link: product,
-                                            seller:,
-                                            price_cents: product.price_cents,
-                                            email: gifter_email,
-                                            purchase_state: "successful",
-                                            is_gift_sender_purchase: true,
-                                            stripe_transaction_id: "ch_zitkxbhds3zqlt",
-                                            can_contact: true)
+                                 seller:,
+                                 price_cents: product.price_cents,
+                                 email: gifter_email,
+                                 purchase_state: "successful",
+                                 is_gift_sender_purchase: true,
+                                 stripe_transaction_id: "ch_zitkxbhds3zqlt",
+                                 can_contact: true)
 
         gift.gifter_purchase = gifter_purchase
 
         gift.giftee_purchase = create(:purchase, link: product,
-                                                 seller:,
-                                                 email: giftee_email,
-                                                 price_cents: 0,
-                                                 is_gift_receiver_purchase: true,
-                                                 purchase_state: "gift_receiver_purchase_successful",
-                                                 can_contact: true)
+                                      seller:,
+                                      email: giftee_email,
+                                      price_cents: 0,
+                                      is_gift_receiver_purchase: true,
+                                      purchase_state: "gift_receiver_purchase_successful",
+                                      can_contact: true)
         gift.mark_successful
         gift.save!
         index_model_records(Purchase)
@@ -580,7 +580,6 @@ describe PurchasesController, :vcr do
             sign_in seller
 
             get :search, params: { query: "sally" }
-
 
             expect(response.parsed_body.length).to eq 1
             expect(response.parsed_body[0]["purchase_email"]).to eq @original_purchase.email
@@ -805,7 +804,7 @@ describe PurchasesController, :vcr do
           hash_including(
             created_on_or_after: Time.utc(2020, 7, 31, 15),
             created_before: Time.utc(2020, 8, 31, 14).end_of_hour,
-        )).and_call_original
+          )).and_call_original
 
         params[:start_time] = "2020-08-01"
         params[:end_time] = "2020-08-31"
@@ -882,14 +881,14 @@ describe PurchasesController, :vcr do
           @gifter_purchase.save!
 
           @giftee_purchase = gift.giftee_purchase = create(:purchase, link: @product,
-                                                                      seller: @product.user,
-                                                                      email: giftee_email,
-                                                                      price_cents: 0,
-                                                                      total_transaction_cents: 0,
-                                                                      stripe_transaction_id: nil,
-                                                                      stripe_fingerprint: nil,
-                                                                      is_gift_receiver_purchase: true,
-                                                                      purchase_state: "gift_receiver_purchase_successful")
+                                                           seller: @product.user,
+                                                           email: giftee_email,
+                                                           price_cents: 0,
+                                                           total_transaction_cents: 0,
+                                                           stripe_transaction_id: nil,
+                                                           stripe_fingerprint: nil,
+                                                           is_gift_receiver_purchase: true,
+                                                           purchase_state: "gift_receiver_purchase_successful")
           @giftee_purchase.create_url_redirect!
 
           gift.mark_successful
@@ -1380,8 +1379,6 @@ describe PurchasesController, :vcr do
         expect(assigns(:hide_layouts)).to be(true)
       end
     end
-
-
 
     describe "GET receipt" do
       let(:purchase) { create(:purchase, email: "test@example.com") }
@@ -2104,6 +2101,45 @@ describe PurchasesController, :vcr do
           end
         end
       end
+    end
+  end
+
+  describe "GET #receipt for gifted purchase" do
+    render_views
+
+    let(:seller) { create(:user) }
+    let(:buyer) { create(:user) }
+    let(:licensed_prod) { create(:product, user: seller, price_cents: 0) }
+    let(:gifter_email) { "gifter@example.com" }
+    let(:giftee_email) { "giftee@example.com" }
+
+    before do
+      stub_const("ObfuscateIds::CIPHER_KEY", "spec-test-key")
+      allow(SecureExternalId).to receive(:config).and_return(
+        { secret_key: "x" * 64, salt: "y" * 32, primary_key_version: 1 }
+      )
+    end
+
+    it "renders using the giftee purchase (no 500/spinner)" do
+      sender_purchase, _ = Purchase::CreateService.new(
+        product: licensed_prod,
+        params: {
+          is_gift: true,
+          purchase: { email: gifter_email, perceived_price_cents: 0 },
+          gift: { giftee_email: giftee_email }
+        },
+        buyer: buyer
+      ).perform
+
+      sender_purchase.reload
+      giftee_purchase = sender_purchase.gift_given&.giftee_purchase
+      expect(giftee_purchase).to be_present
+
+      create(:license, link: licensed_prod, purchase: giftee_purchase, serial: "TEST-KEY-123")
+
+      get :receipt, params: { id: sender_purchase.external_id, email: gifter_email }
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("<html")
     end
   end
 end

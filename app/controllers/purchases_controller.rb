@@ -103,11 +103,11 @@ class PurchasesController < ApplicationController
       field_name = "Email address"
 
       redirect_to secure_url_redirect_path(
-        encrypted_payload: encrypted_payload,
-        message: message,
-        field_name: field_name,
-        error_message: error_message
-      )
+                    encrypted_payload: encrypted_payload,
+                    message: message,
+                    field_name: field_name,
+                    error_message: error_message
+                  )
       return
     end
 
@@ -311,7 +311,7 @@ class PurchasesController < ApplicationController
         business_vat_id = OmanVatNumberValidationService.new(raw_vat_id).process ? raw_vat_id : nil
       elsif @chargeable.purchase_sales_tax_info.present? &&
             (Compliance::Countries::COUNTRIES_THAT_COLLECT_TAX_ON_ALL_PRODUCTS.include?(@chargeable.purchase_sales_tax_info.country_code) ||
-            Compliance::Countries::COUNTRIES_THAT_COLLECT_TAX_ON_DIGITAL_PRODUCTS_WITH_TAX_ID_PRO_VALIDATION.include?(@chargeable.purchase_sales_tax_info.country_code))
+              Compliance::Countries::COUNTRIES_THAT_COLLECT_TAX_ON_DIGITAL_PRODUCTS_WITH_TAX_ID_PRO_VALIDATION.include?(@chargeable.purchase_sales_tax_info.country_code))
         business_vat_id = TaxIdValidationService.new(raw_vat_id, @chargeable.purchase_sales_tax_info.country_code).process ? raw_vat_id : nil
       else
         business_vat_id = VatValidationService.new(raw_vat_id).process ? raw_vat_id : nil
@@ -332,16 +332,16 @@ class PurchasesController < ApplicationController
         notice =
           if @chargeable.purchase_sales_tax_info.present? &&
              (Compliance::Countries::GST_APPLICABLE_COUNTRY_CODES.include?(@chargeable.purchase_sales_tax_info.country_code) ||
-             Compliance::Countries::IND.alpha2 == @chargeable.purchase_sales_tax_info.country_code)
+               Compliance::Countries::IND.alpha2 == @chargeable.purchase_sales_tax_info.country_code)
             "GST has also been refunded."
           elsif @chargeable.purchase_sales_tax_info.present? &&
                 Compliance::Countries::CAN.alpha2 == @chargeable.purchase_sales_tax_info.country_code
             "QST has also been refunded."
           elsif @chargeable.purchase_sales_tax_info.present? &&
-            Compliance::Countries::MYS.alpha2 == @chargeable.purchase_sales_tax_info.country_code
+                Compliance::Countries::MYS.alpha2 == @chargeable.purchase_sales_tax_info.country_code
             "Service tax has also been refunded."
           elsif @chargeable.purchase_sales_tax_info.present? &&
-            Compliance::Countries::JPN.alpha2 == @chargeable.purchase_sales_tax_info.country_code
+                Compliance::Countries::JPN.alpha2 == @chargeable.purchase_sales_tax_info.country_code
             "CT has also been refunded."
           else
             "VAT has also been refunded."
@@ -386,8 +386,21 @@ class PurchasesController < ApplicationController
   def receipt
     if (@purchase.purchaser && @purchase.purchaser == logged_in_user) ||
        (logged_in_user && logged_in_user.is_team_member?) ||
-       (params[:email].present? && ActiveSupport::SecurityUtils.secure_compare(@purchase.email.downcase, params[:email].to_s.strip.downcase))
-      message = CustomerMailer.receipt(@purchase.id, for_email: false)
+       (params[:email].present? && ActiveSupport::SecurityUtils.secure_compare(
+         @purchase.email.downcase,
+         params[:email].to_s.strip.downcase
+       ))
+
+      main_purchase =
+        if @purchase.is_gift_sender_purchase? &&
+           (giftee = @purchase.gift_given&.giftee_purchase)
+          giftee
+        else
+          @purchase
+        end
+
+      message = CustomerMailer.receipt(main_purchase.id, for_email: false)
+
       # Generate the same markup used in the email
       Premailer::Rails::Hook.perform(message)
 
@@ -418,135 +431,136 @@ class PurchasesController < ApplicationController
   end
 
   protected
-    def verify_current_seller_is_seller_for_purchase
-      e404_json if @purchase.nil? || @purchase.seller != current_seller
+
+  def verify_current_seller_is_seller_for_purchase
+    e404_json if @purchase.nil? || @purchase.seller != current_seller
+  end
+
+  def validate_purchase_request
+    # Don't allow the purchase to go through if the buyer is a bot. Pretend that the purchase succeeded instead.
+    return render json: { success: true } if is_bot?
+
+    # Don't allow the purchase to go through if cookies are disabled and it's a paid purchase
+    contains_paid_purchase = if params[:line_items].present?
+                               params[:line_items].any? { |product_params| product_params[:perceived_price_cents] != "0" }
+                             else
+                               params[:perceived_price_cents] != "0"
+                             end
+    browser_guid = cookies[:_gumroad_guid]
+    return render_error("Cookies are not enabled on your browser. Please enable cookies and refresh this page before continuing.") if contains_paid_purchase && browser_guid.blank?
+
+    # Verify reCAPTCHA response
+    unless skip_recaptcha?
+      render_error("Sorry, we could not verify the CAPTCHA. Please try again.") unless valid_recaptcha_response_and_hostname?(site_key: GlobalConfig.get("RECAPTCHA_MONEY_SITE_KEY"))
+    end
+  end
+
+  def render_create_success(purchase)
+    render json: purchase.purchase_response
+  end
+
+  def error_response(error_message, purchase: nil)
+    card_country = purchase&.card_country
+    card_country = "CN" if card_country == "C2" # PayPal (wrongly) returns CN2 for China users transacting with USD
+
+    {
+      success: false,
+      error_message:,
+      name: purchase&.link&.name,
+      formatted_price: formatted_price(purchase&.link&.price_currency_type || Currency::USD, purchase&.total_transaction_cents),
+      error_code: purchase&.error_code,
+      is_tax_mismatch: purchase&.error_code == PurchaseErrorCode::TAX_VALIDATION_FAILED,
+      card_country: (ISO3166::Country[card_country]&.common_name if card_country.present?),
+      ip_country: purchase&.ip_country,
+      updated_product: purchase.present? ? CheckoutPresenter.new(logged_in_user: nil, ip: request.remote_ip).checkout_product(purchase.link, purchase.link.cart_item({ rent: purchase.is_rental, option: purchase.variant_attributes.first&.external_id, recurrence: purchase.price&.recurrence, price: purchase.customizable_price? ? purchase.displayed_price_cents : nil }), { recommended_by: purchase.recommended_by.presence }) : nil,
+    }
+  end
+
+  def render_error(error_message, purchase: nil)
+    render json: error_response(error_message, purchase:)
+  end
+
+  def handle_recommended_purchase(purchase)
+    return unless purchase.successful? || purchase.preorder_authorization_successful? || purchase.is_free_trial_purchase?
+
+    if RecommendationType.is_product_recommendation?(purchase.recommended_by)
+      recommendation_type = RecommendationType::PRODUCT_RECOMMENDATION
+      recommended_by_link = Link.find_by(unique_permalink: purchase.recommended_by)
+    else
+      recommendation_type = purchase.recommended_by
+      recommended_by_link = nil
     end
 
-    def validate_purchase_request
-      # Don't allow the purchase to go through if the buyer is a bot. Pretend that the purchase succeeded instead.
-      return render json: { success: true } if is_bot?
+    purchase_info_params = {
+      purchase:,
+      recommended_link: purchase.link,
+      recommended_by_link:,
+      recommendation_type:,
+      recommender_model_name: purchase.recommender_model_name,
+    }
 
-      # Don't allow the purchase to go through if cookies are disabled and it's a paid purchase
-      contains_paid_purchase = if params[:line_items].present?
-        params[:line_items].any? { |product_params| product_params[:perceived_price_cents] != "0" }
-      else
-        params[:perceived_price_cents] != "0"
-      end
-      browser_guid = cookies[:_gumroad_guid]
-      return render_error("Cookies are not enabled on your browser. Please enable cookies and refresh this page before continuing.") if contains_paid_purchase && browser_guid.blank?
-
-      # Verify reCAPTCHA response
-      unless skip_recaptcha?
-        render_error("Sorry, we could not verify the CAPTCHA. Please try again.") unless valid_recaptcha_response_and_hostname?(site_key: GlobalConfig.get("RECAPTCHA_MONEY_SITE_KEY"))
-      end
+    if purchase.was_discover_fee_charged?
+      purchase_info_params[:discover_fee_per_thousand] = purchase.link.discover_fee_per_thousand
     end
 
-    def render_create_success(purchase)
-      render json: purchase.purchase_response
+    RecommendedPurchaseInfo.create!(purchase_info_params)
+  end
+
+  def permitted_subscription_params
+    params.except("g-recaptcha-response").permit(:id, :price_id, :card_data_handling_mode, :card_country, :card_country_source,
+                                                 :stripe_payment_method_id, :stripe_customer_id, :stripe_setup_intent_id, :paymentToken, :billing_agreement_id, :visual,
+                                                 :braintree_device_data, :braintree_transient_customer_store_key, :use_existing_card,
+                                                 :price_range, :perceived_price_cents, :perceived_upgrade_price_cents, :quantity,
+                                                 :declined, stripe_error: {}, variants: [], contact_info: [:email, :full_name,
+                                                                                                           :street_address, :city, :state, :zip_code, :country]).to_h
+  end
+
+  def hide_layouts
+    @body_id = "app"
+    @on_purchases_page = @hide_layouts = true
+  end
+
+  def authenticate_subscription!
+    @subscription = Subscription.find_by_external_id!(params[:id])
+    e404 unless cookies.encrypted[@subscription.cookie_key] == @subscription.external_id
+  end
+
+  def authenticate_preorder!
+    @preorder = Preorder.find_by_external_id(params[:id])
+    e404 if @preorder.blank?
+  end
+
+  def check_for_successful_purchase_for_vat_refund
+    return if params["vat_id"].blank? || @purchase.successful?
+
+    render json: { success: false, message: "Your purchase has not been completed by PayPal yet. Please try again soon." }
+  end
+
+  def skip_recaptcha?
+    (action_name == "update_subscription" && params[:perceived_upgrade_price_cents].to_s == "0") ||
+      (action_name.in?(["update_subscription", "charge_preorder"]) && params[:use_existing_card]) ||
+      valid_wallet_payment?
+  end
+
+  def valid_wallet_payment?
+    return false if [params[:wallet_type], params[:stripe_payment_method_id]].any?(&:blank?)
+    payment_method = Stripe::PaymentMethod.retrieve(
+      params[:stripe_payment_method_id]
+    )
+    payment_method&.card&.wallet&.type == params[:wallet_type]
+  rescue Stripe::StripeError
+    render_error("Sorry, something went wrong.")
+  end
+
+  def require_email_confirmation
+    return if ActiveSupport::SecurityUtils.secure_compare(@purchase.email, params[:email].to_s)
+
+    if params[:email].blank?
+      flash[:warning] = "Please enter the purchase's email address to generate the invoice."
+    else
+      flash[:alert] = "Incorrect email address. Please try again."
     end
 
-    def error_response(error_message, purchase: nil)
-      card_country = purchase&.card_country
-      card_country = "CN" if card_country == "C2" # PayPal (wrongly) returns CN2 for China users transacting with USD
-
-      {
-        success: false,
-        error_message:,
-        name: purchase&.link&.name,
-        formatted_price: formatted_price(purchase&.link&.price_currency_type || Currency::USD, purchase&.total_transaction_cents),
-        error_code: purchase&.error_code,
-        is_tax_mismatch: purchase&.error_code == PurchaseErrorCode::TAX_VALIDATION_FAILED,
-        card_country: (ISO3166::Country[card_country]&.common_name if card_country.present?),
-        ip_country: purchase&.ip_country,
-        updated_product: purchase.present? ? CheckoutPresenter.new(logged_in_user: nil, ip: request.remote_ip).checkout_product(purchase.link, purchase.link.cart_item({ rent: purchase.is_rental, option: purchase.variant_attributes.first&.external_id, recurrence: purchase.price&.recurrence, price: purchase.customizable_price? ? purchase.displayed_price_cents : nil }), { recommended_by: purchase.recommended_by.presence }) : nil,
-      }
-    end
-
-    def render_error(error_message, purchase: nil)
-      render json: error_response(error_message, purchase:)
-    end
-
-    def handle_recommended_purchase(purchase)
-      return unless purchase.successful? || purchase.preorder_authorization_successful? || purchase.is_free_trial_purchase?
-
-      if RecommendationType.is_product_recommendation?(purchase.recommended_by)
-        recommendation_type = RecommendationType::PRODUCT_RECOMMENDATION
-        recommended_by_link = Link.find_by(unique_permalink: purchase.recommended_by)
-      else
-        recommendation_type = purchase.recommended_by
-        recommended_by_link = nil
-      end
-
-      purchase_info_params = {
-        purchase:,
-        recommended_link: purchase.link,
-        recommended_by_link:,
-        recommendation_type:,
-        recommender_model_name: purchase.recommender_model_name,
-      }
-
-      if purchase.was_discover_fee_charged?
-        purchase_info_params[:discover_fee_per_thousand] = purchase.link.discover_fee_per_thousand
-      end
-
-      RecommendedPurchaseInfo.create!(purchase_info_params)
-    end
-
-    def permitted_subscription_params
-      params.except("g-recaptcha-response").permit(:id, :price_id, :card_data_handling_mode, :card_country, :card_country_source,
-                                                   :stripe_payment_method_id, :stripe_customer_id, :stripe_setup_intent_id, :paymentToken, :billing_agreement_id, :visual,
-                                                   :braintree_device_data, :braintree_transient_customer_store_key, :use_existing_card,
-                                                   :price_range, :perceived_price_cents, :perceived_upgrade_price_cents, :quantity,
-                                                   :declined, stripe_error: {}, variants: [], contact_info: [:email, :full_name,
-                                                                                                             :street_address, :city, :state, :zip_code, :country]).to_h
-    end
-
-    def hide_layouts
-      @body_id = "app"
-      @on_purchases_page = @hide_layouts = true
-    end
-
-    def authenticate_subscription!
-      @subscription = Subscription.find_by_external_id!(params[:id])
-      e404 unless cookies.encrypted[@subscription.cookie_key] == @subscription.external_id
-    end
-
-    def authenticate_preorder!
-      @preorder = Preorder.find_by_external_id(params[:id])
-      e404 if @preorder.blank?
-    end
-
-    def check_for_successful_purchase_for_vat_refund
-      return if params["vat_id"].blank? || @purchase.successful?
-
-      render json: { success: false, message: "Your purchase has not been completed by PayPal yet. Please try again soon." }
-    end
-
-    def skip_recaptcha?
-      (action_name == "update_subscription" && params[:perceived_upgrade_price_cents].to_s == "0") ||
-        (action_name.in?(["update_subscription", "charge_preorder"]) && params[:use_existing_card]) ||
-        valid_wallet_payment?
-    end
-
-    def valid_wallet_payment?
-      return false if [params[:wallet_type], params[:stripe_payment_method_id]].any?(&:blank?)
-      payment_method = Stripe::PaymentMethod.retrieve(
-        params[:stripe_payment_method_id]
-      )
-      payment_method&.card&.wallet&.type == params[:wallet_type]
-    rescue Stripe::StripeError
-      render_error("Sorry, something went wrong.")
-    end
-
-    def require_email_confirmation
-      return if ActiveSupport::SecurityUtils.secure_compare(@purchase.email, params[:email].to_s)
-
-      if params[:email].blank?
-        flash[:warning] = "Please enter the purchase's email address to generate the invoice."
-      else
-        flash[:alert] = "Incorrect email address. Please try again."
-      end
-
-      redirect_to confirm_generate_invoice_path(@purchase.external_id)
-    end
+    redirect_to confirm_generate_invoice_path(@purchase.external_id)
+  end
 end
