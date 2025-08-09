@@ -64,10 +64,10 @@ class CustomersController < Sellers::BaseController
     original_purchase = current_seller.sales.find_by_external_id!(params[:purchase_id]) if params[:purchase_id].present?
 
     all_purchases = if original_purchase.subscription.present?
-      original_purchase.subscription.purchases.all_success_states_except_preorder_auth_and_gift.preload(:receipt_email_info_from_purchase)
-    else
-      [original_purchase]
-    end
+                      original_purchase.subscription.purchases.all_success_states_except_preorder_auth_and_gift.preload(:receipt_email_info_from_purchase)
+                    else
+                      [original_purchase]
+                    end
 
     receipts = all_purchases.map do |purchase|
       receipt_email_info = purchase.receipt_email_info
@@ -116,71 +116,72 @@ class CustomersController < Sellers::BaseController
   end
 
   private
-    def fetch_sales(query: nil, sort: nil, products: nil, variants: nil, excluded_products: nil, excluded_variants: nil, minimum_amount_cents: nil, maximum_amount_cents: nil, created_after: nil, created_before: nil, country: nil, active_customers_only: false)
-      search_options = {
-        seller: current_seller,
-        country: Compliance::Countries.historical_names(country || params[:bought_from]).presence,
-        state: Purchase::NON_GIFT_SUCCESS_STATES,
-        any_products_or_variants: {},
-        exclude_purchasers_of_product: excluded_products,
-        exclude_purchasers_of_variant: excluded_variants,
-        exclude_non_original_subscription_purchases: true,
-        exclude_giftees: true,
-        exclude_bundle_product_purchases: true,
-        exclude_commission_completion_purchases: true,
-        from: params[:page].to_i * CUSTOMERS_PER_PAGE,
-        size: CUSTOMERS_PER_PAGE,
-        sort: [{ created_at: { order: :desc } }, { id: { order: :desc } }],
-        track_total_hits: true,
-        seller_query: query || params[:query],
-      }
-      search_options[:sort].unshift(sort) if sort.present?
-      search_options[:any_products_or_variants][:products] = products if products.present?
-      search_options[:any_products_or_variants][:variants] = variants if variants.present?
 
-      if active_customers_only
-        search_options[:exclude_deactivated_subscriptions] = true
-        search_options[:exclude_refunded_except_subscriptions] = true
-        search_options[:exclude_unreversed_chargedback] = true
+  def fetch_sales(query: nil, sort: nil, products: nil, variants: nil, excluded_products: nil, excluded_variants: nil, minimum_amount_cents: nil, maximum_amount_cents: nil, created_after: nil, created_before: nil, country: nil, active_customers_only: false)
+    search_options = {
+      seller: current_seller,
+      country: Compliance::Countries.historical_names(country || params[:bought_from]).presence,
+      state: Purchase::NON_GIFT_SUCCESS_STATES,
+      any_products_or_variants: {},
+      exclude_purchasers_of_product: excluded_products,
+      exclude_purchasers_of_variant: excluded_variants,
+      exclude_non_original_subscription_purchases: true,
+      exclude_giftees: false,
+      exclude_bundle_product_purchases: false,
+      exclude_commission_completion_purchases: true,
+      from: params[:page].to_i * CUSTOMERS_PER_PAGE,
+      size: CUSTOMERS_PER_PAGE,
+      sort: [{ created_at: { order: :desc } }, { id: { order: :desc } }],
+      track_total_hits: true,
+      seller_query: query || params[:query],
+    }
+    search_options[:sort].unshift(sort) if sort.present?
+    search_options[:any_products_or_variants][:products] = products if products.present?
+    search_options[:any_products_or_variants][:variants] = variants if variants.present?
+
+    if active_customers_only
+      search_options[:exclude_deactivated_subscriptions] = true
+      search_options[:exclude_refunded_except_subscriptions] = true
+      search_options[:exclude_unreversed_chargedback] = true
+    end
+
+    search_options[:price_greater_than] = get_usd_cents(current_seller.currency_type, minimum_amount_cents) if minimum_amount_cents.present?
+    search_options[:price_less_than] = get_usd_cents(current_seller.currency_type, maximum_amount_cents) if maximum_amount_cents.present?
+
+    if created_after || created_before
+      timezone = ActiveSupport::TimeZone[current_seller.timezone]
+      search_options[:created_on_or_after] = timezone.parse(created_after) if created_after
+      search_options[:created_before] = timezone.parse(created_before).tomorrow if created_before
+      if search_options[:created_on_or_after] && search_options[:created_before] && search_options[:created_on_or_after] > search_options[:created_before]
+        search_options.except!(:created_before, :created_on_or_after)
       end
-
-      search_options[:price_greater_than] = get_usd_cents(current_seller.currency_type, minimum_amount_cents) if minimum_amount_cents.present?
-      search_options[:price_less_than] = get_usd_cents(current_seller.currency_type, maximum_amount_cents) if maximum_amount_cents.present?
-
-      if created_after || created_before
-        timezone = ActiveSupport::TimeZone[current_seller.timezone]
-        search_options[:created_on_or_after] = timezone.parse(created_after) if created_after
-        search_options[:created_before] = timezone.parse(created_before).tomorrow if created_before
-        if search_options[:created_on_or_after] && search_options[:created_before] && search_options[:created_on_or_after] > search_options[:created_before]
-          search_options.except!(:created_before, :created_on_or_after)
-        end
-      end
-
-      PurchaseSearchService.search(search_options)
     end
 
-    def load_sales(sales)
-      sales.records
-        .includes(
-          :call,
-          :purchase_offer_code_discount,
-          :tip,
-          :upsell_purchase,
-          product_review: [:response, { alive_videos: [:video_file] }],
-          utm_link: [target_resource: [:seller, :user]]
-        )
-        .load
-    end
+    PurchaseSearchService.search(search_options)
+  end
 
-    def set_title
-      @title = "Sales"
-    end
+  def load_sales(sales)
+    sales.records
+         .includes(
+           :call,
+           :purchase_offer_code_discount,
+           :tip,
+           :upsell_purchase,
+           product_review: [:response, { alive_videos: [:video_file] }],
+           utm_link: [target_resource: [:seller, :user]]
+         )
+         .load
+  end
 
-    def set_on_page_type
-      @on_customers_page = true
-    end
+  def set_title
+    @title = "Sales"
+  end
 
-    def authorize
-      super([:audience, Purchase], :index?)
-    end
+  def set_on_page_type
+    @on_customers_page = true
+  end
+
+  def authorize
+    super([:audience, Purchase], :index?)
+  end
 end
