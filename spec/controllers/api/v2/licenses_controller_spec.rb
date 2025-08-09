@@ -20,53 +20,53 @@ describe Api::V2::LicensesController do
     context "when logged in with edit_products scope" do
       before do
         @token = create("doorkeeper/access_token", application: @app,
-                        resource_owner_id: @product.user.id,
-                        scopes: "edit_products")
+                                                   resource_owner_id: @product.user.id,
+                                                   scopes: "edit_products")
       end
 
       it "returns the correct JSON when it modifies the license state" do
         put action, params: { access_token: @token.token, license_key: @purchase.license.serial }.merge(@product_identifier)
 
         expect(response.parsed_body).to eq({
-                                             success: true,
-                                             uses: 0,
-                                             purchase: {
-                                               id: ObfuscateIds.encrypt(@purchase.id),
-                                               product_name: @product.name,
-                                               created_at: @purchase.created_at,
-                                               variants: "",
-                                               custom_fields: [],
-                                               quantity: 1,
-                                               refunded: false,
-                                               chargebacked: false,
-                                               email: @purchase.email,
-                                               seller_id: ObfuscateIds.encrypt(@purchase.seller.id),
-                                               product_id: ObfuscateIds.encrypt(@product.id),
-                                               permalink: @product.general_permalink,
-                                               product_permalink: @product.long_url,
-                                               short_product_id: @product.unique_permalink,
-                                               price: @purchase.price_cents,
-                                               currency: @product.price_currency_type,
-                                               order_number: @purchase.external_id_numeric,
-                                               sale_id: ObfuscateIds.encrypt(@purchase.id),
-                                               sale_timestamp: @purchase.created_at,
-                                               license_key: @purchase.license.serial,
-                                               is_gift_receiver_purchase: false,
-                                               disputed: false,
-                                               dispute_won: false,
-                                               gumroad_fee: @purchase.fee_cents,
-                                               discover_fee_charged: @purchase.was_discover_fee_charged,
-                                               can_contact: @purchase.can_contact,
-                                               referrer: @purchase.referrer,
-                                               card: {
-                                                 bin: nil,
-                                                 expiry_month: @purchase.card_expiry_month,
-                                                 expiry_year: @purchase.card_expiry_year,
-                                                 type: @purchase.card_type,
-                                                 visual: @purchase.card_visual,
-                                               }
-                                             }
-                                           }.as_json)
+          success: true,
+          uses: 0,
+          purchase: {
+            id: ObfuscateIds.encrypt(@purchase.id),
+            product_name: @product.name,
+            created_at: @purchase.created_at,
+            variants: "",
+            custom_fields: [],
+            quantity: 1,
+            refunded: false,
+            chargebacked: false,
+            email: @purchase.email,
+            seller_id: ObfuscateIds.encrypt(@purchase.seller.id),
+            product_id: ObfuscateIds.encrypt(@product.id),
+            permalink: @product.general_permalink,
+            product_permalink: @product.long_url,
+            short_product_id: @product.unique_permalink,
+            price: @purchase.price_cents,
+            currency: @product.price_currency_type,
+            order_number: @purchase.external_id_numeric,
+            sale_id: ObfuscateIds.encrypt(@purchase.id),
+            sale_timestamp: @purchase.created_at,
+            license_key: @purchase.license.serial,
+            is_gift_receiver_purchase: false,
+            disputed: false,
+            dispute_won: false,
+            gumroad_fee: @purchase.fee_cents,
+            discover_fee_charged: @purchase.was_discover_fee_charged,
+            can_contact: @purchase.can_contact,
+            referrer: @purchase.referrer,
+            card: {
+              bin: nil,
+              expiry_month: @purchase.card_expiry_month,
+              expiry_year: @purchase.card_expiry_year,
+              type: @purchase.card_type,
+              visual: @purchase.card_visual,
+            }
+          }
+        }.as_json)
       end
 
       it "returns an error response when a user provides a license key that does not exist for the provided product" do
@@ -74,9 +74,9 @@ describe Api::V2::LicensesController do
 
         expect(response.code.to_i).to eq(404)
         expect(response.parsed_body).to eq({
-                                             success: false,
-                                             message: "That license does not exist for the provided product."
-                                           }.as_json)
+          success: false,
+          message: "That license does not exist for the provided product."
+        }.as_json)
       end
 
       it "returns an error response when a user provides a non existent product" do
@@ -84,9 +84,9 @@ describe Api::V2::LicensesController do
 
         expect(response.code.to_i).to eq(404)
         expect(response.parsed_body).to eq({
-                                             success: false,
-                                             message: "That license does not exist for the provided product."
-                                           }.as_json)
+          success: false,
+          message: "That license does not exist for the provided product."
+        }.as_json)
       end
 
       it "does not allow modifying someone else's license" do
@@ -96,17 +96,17 @@ describe Api::V2::LicensesController do
         put action, params: { access_token: @token.token, product_permalink: other_product.custom_permalink, license_key: other_purchase.license.serial }
 
         expect(response.parsed_body).to eq({
-                                             success: false,
-                                             message: "That license does not exist for the provided product."
-                                           }.as_json)
+          success: false,
+          message: "That license does not exist for the provided product."
+        }.as_json)
       end
     end
 
     context "when logged in with view_sales scope" do
       before do
         @token = create("doorkeeper/access_token", application: @app,
-                        resource_owner_id: @product.user.id,
-                        scopes: "view_sales")
+                                                   resource_owner_id: @product.user.id,
+                                                   scopes: "view_sales")
       end
 
       it "responds with 403 forbidden" do
@@ -129,8 +129,8 @@ describe Api::V2::LicensesController do
     context "when logged in with edit_products scope" do
       before do
         @token = create("doorkeeper/access_token", application: @app,
-                        resource_owner_id: @product.user.id,
-                        scopes: "edit_products")
+                                                   resource_owner_id: @product.user.id,
+                                                   scopes: "edit_products")
       end
 
       shared_examples_for "enable license" do |product_identifier_key, product_identifier_value|
@@ -148,8 +148,8 @@ describe Api::V2::LicensesController do
 
         it "returns a 404 error if the license user is not the current resource owner" do
           token = create("doorkeeper/access_token", application: @app,
-                         resource_owner_id: create(:user).id,
-                         scopes: "edit_products")
+                                                    resource_owner_id: create(:user).id,
+                                                    scopes: "edit_products")
           put :enable, params: { access_token: token.token, license_key: @purchase.license.serial }.merge(@product_identifier)
           expect(response.code.to_i).to eq(404)
         end
@@ -173,8 +173,8 @@ describe Api::V2::LicensesController do
     context "when logged in with edit_products scope" do
       before do
         @token = create("doorkeeper/access_token", application: @app,
-                        resource_owner_id: @product.user.id,
-                        scopes: "edit_products")
+                                                   resource_owner_id: @product.user.id,
+                                                   scopes: "edit_products")
       end
 
       shared_examples_for "disable license" do |product_identifier_key, product_identifier_value|
@@ -191,8 +191,8 @@ describe Api::V2::LicensesController do
 
         it "returns a 404 error if the license user is not the current resource owner" do
           token = create("doorkeeper/access_token", application: @app,
-                         resource_owner_id: create(:user).id,
-                         scopes: "edit_products")
+                                                    resource_owner_id: create(:user).id,
+                                                    scopes: "edit_products")
           put :disable, params: { access_token: token.token, license_key: @purchase.license.serial }.merge(@product_identifier)
           expect(response.code.to_i).to eq(404)
         end
@@ -214,9 +214,9 @@ describe Api::V2::LicensesController do
         post :verify, params: { license_key: "Does not exist" }.merge(@product_identifier)
         expect(response.code.to_i).to eq(404)
         expect(response.parsed_body).to eq({
-                                             success: false,
-                                             message: "That license does not exist for the provided product."
-                                           }.as_json)
+          success: false,
+          message: "That license does not exist for the provided product."
+        }.as_json)
       end
 
       it "returns the correct json when a valid product and license key are provided" do
@@ -224,45 +224,45 @@ describe Api::V2::LicensesController do
         expect(response.code.to_i).to eq(200)
         @purchase.reload
         expect(response.parsed_body).to eq({
-                                             success: true,
-                                             uses: 1,
-                                             purchase: {
-                                               id: ObfuscateIds.encrypt(@purchase.id),
-                                               product_name: @product.name,
-                                               created_at: @purchase.created_at,
-                                               variants: "",
-                                               custom_fields: [],
-                                               quantity: 1,
-                                               refunded: false,
-                                               chargebacked: false,
-                                               email: @purchase.email,
-                                               seller_id: ObfuscateIds.encrypt(@purchase.seller.id),
-                                               product_id: ObfuscateIds.encrypt(@product.id),
-                                               permalink: @product.general_permalink,
-                                               product_permalink: @product.long_url,
-                                               short_product_id: @product.unique_permalink,
-                                               price: @purchase.price_cents,
-                                               currency: @product.price_currency_type,
-                                               order_number: @purchase.external_id_numeric,
-                                               sale_id: ObfuscateIds.encrypt(@purchase.id),
-                                               sale_timestamp: @purchase.created_at,
-                                               license_key: @purchase.license.serial,
-                                               is_gift_receiver_purchase: false,
-                                               disputed: false,
-                                               dispute_won: false,
-                                               gumroad_fee: @purchase.fee_cents,
-                                               discover_fee_charged: @purchase.was_discover_fee_charged,
-                                               can_contact: @purchase.can_contact,
-                                               referrer: @purchase.referrer,
-                                               card: {
-                                                 bin: nil,
-                                                 expiry_month: @purchase.card_expiry_month,
-                                                 expiry_year: @purchase.card_expiry_year,
-                                                 type: @purchase.card_type,
-                                                 visual: @purchase.card_visual,
-                                               }
-                                             }
-                                           }.as_json)
+          success: true,
+          uses: 1,
+          purchase: {
+            id: ObfuscateIds.encrypt(@purchase.id),
+            product_name: @product.name,
+            created_at: @purchase.created_at,
+            variants: "",
+            custom_fields: [],
+            quantity: 1,
+            refunded: false,
+            chargebacked: false,
+            email: @purchase.email,
+            seller_id: ObfuscateIds.encrypt(@purchase.seller.id),
+            product_id: ObfuscateIds.encrypt(@product.id),
+            permalink: @product.general_permalink,
+            product_permalink: @product.long_url,
+            short_product_id: @product.unique_permalink,
+            price: @purchase.price_cents,
+            currency: @product.price_currency_type,
+            order_number: @purchase.external_id_numeric,
+            sale_id: ObfuscateIds.encrypt(@purchase.id),
+            sale_timestamp: @purchase.created_at,
+            license_key: @purchase.license.serial,
+            is_gift_receiver_purchase: false,
+            disputed: false,
+            dispute_won: false,
+            gumroad_fee: @purchase.fee_cents,
+            discover_fee_charged: @purchase.was_discover_fee_charged,
+            can_contact: @purchase.can_contact,
+            referrer: @purchase.referrer,
+            card: {
+              bin: nil,
+              expiry_month: @purchase.card_expiry_month,
+              expiry_year: @purchase.card_expiry_year,
+              type: @purchase.card_type,
+              visual: @purchase.card_visual,
+            }
+          }
+        }.as_json)
         post :verify, params: { product_permalink: @product.custom_permalink, license_key: @purchase.license.serial }
         expect(response.code.to_i).to eq(200)
         expect(response.parsed_body["uses"]).to eq 2
@@ -324,15 +324,15 @@ describe Api::V2::LicensesController do
 
       it "indicates that a license has been disabled" do
         purchase = create(:purchase, link: @product,
-                          license: create(:license, link: @product, disabled_at: Date.current))
+                                     license: create(:license, link: @product, disabled_at: Date.current))
 
         post :verify, params: { license_key: purchase.license.serial }.merge(@product_identifier)
 
         expect(response.code.to_i).to eq(404)
         expect(response.parsed_body).to eq({
-                                             success: false,
-                                             message: "This license key has been disabled."
-                                           }.as_json)
+          success: false,
+          message: "This license key has been disabled."
+        }.as_json)
       end
 
       it "doesn't verify authenticity token" do
@@ -352,9 +352,9 @@ describe Api::V2::LicensesController do
 
           expect(response).to have_http_status(:not_found)
           expect(response.parsed_body).to eq({
-                                               success: false,
-                                               message: "Access to the purchase associated with this license has expired."
-                                             }.as_json)
+            success: false,
+            message: "Access to the purchase associated with this license has expired."
+          }.as_json)
         end
       end
     end
@@ -367,7 +367,7 @@ describe Api::V2::LicensesController do
       product = create(:membership_product, subscription_duration: :monthly)
       subscription = create(:subscription, link: product)
       original_purchase = create(:purchase, is_original_subscription_purchase: true, link: product,
-                                 subscription:, license: create(:license, link: product))
+                                            subscription:, license: create(:license, link: product))
       subscription.end_subscription!
 
       post :verify, params: { product_permalink: product.unique_permalink, license_key: original_purchase.license.serial }
@@ -380,7 +380,7 @@ describe Api::V2::LicensesController do
       product = create(:membership_product, user: create(:user), subscription_duration: :monthly)
       subscription = create(:subscription, user: create(:user, credit_card: create(:credit_card)), link: product)
       original_purchase = create(:purchase, is_original_subscription_purchase: true, link: product,
-                                 subscription:, license: create(:license, link: product))
+                                            subscription:, license: create(:license, link: product))
       recurring_charges = []
       3.times { recurring_charges << create(:purchase, subscription:, is_original_subscription_purchase: false) }
       recurring_charges.each do |recurring_charge|
@@ -397,7 +397,7 @@ describe Api::V2::LicensesController do
       product = create(:subscription_product, user: create(:user))
       subscription = create(:subscription, user: create(:user, credit_card: create(:credit_card)), link: product)
       original_purchase = create(:purchase, is_original_subscription_purchase: true, link: product,
-                                 subscription:, license: create(:license, link: product))
+                                            subscription:, license: create(:license, link: product))
       recurring_charges = []
       3.times { recurring_charges << create(:purchase, subscription:, is_original_subscription_purchase: false) }
       recurring_charges.each do |recurring_charge|
@@ -415,9 +415,9 @@ describe Api::V2::LicensesController do
       post :verify, params: { product_permalink: @product.unique_permalink + "invalid", license_key: "Does not exist" }
       expect(response.code.to_i).to eq(404)
       expect(response.parsed_body).to eq({
-                                           success: false,
-                                           message: "That license does not exist for the provided product."
-                                         }.as_json)
+        success: false,
+        message: "That license does not exist for the provided product."
+      }.as_json)
     end
 
     it "returns successful response for case-insensitive product_permalink param" do
@@ -434,45 +434,45 @@ describe Api::V2::LicensesController do
         expect(response).to have_http_status(:ok)
         @purchase.reload
         expect(response.parsed_body).to eq({
-                                             success: true,
-                                             uses: 1,
-                                             purchase: {
-                                               id: ObfuscateIds.encrypt(@purchase.id),
-                                               product_name: @product.name,
-                                               created_at: @purchase.created_at,
-                                               variants: "",
-                                               custom_fields: [],
-                                               quantity: 1,
-                                               refunded: false,
-                                               chargebacked: false,
-                                               email: @purchase.email,
-                                               seller_id: ObfuscateIds.encrypt(@purchase.seller.id),
-                                               product_id: ObfuscateIds.encrypt(@product.id),
-                                               permalink: @product.general_permalink,
-                                               product_permalink: @product.long_url,
-                                               short_product_id: @product.unique_permalink,
-                                               price: @purchase.price_cents,
-                                               currency: @product.price_currency_type,
-                                               order_number: @purchase.external_id_numeric,
-                                               sale_id: ObfuscateIds.encrypt(@purchase.id),
-                                               sale_timestamp: @purchase.created_at,
-                                               license_key: @purchase.license.serial,
-                                               is_gift_receiver_purchase: false,
-                                               disputed: false,
-                                               dispute_won: false,
-                                               gumroad_fee: @purchase.fee_cents,
-                                               discover_fee_charged: @purchase.was_discover_fee_charged,
-                                               can_contact: @purchase.can_contact,
-                                               referrer: @purchase.referrer,
-                                               card: {
-                                                 bin: nil,
-                                                 expiry_month: @purchase.card_expiry_month,
-                                                 expiry_year: @purchase.card_expiry_year,
-                                                 type: @purchase.card_type,
-                                                 visual: @purchase.card_visual,
-                                               }
-                                             }
-                                           }.as_json)
+          success: true,
+          uses: 1,
+          purchase: {
+            id: ObfuscateIds.encrypt(@purchase.id),
+            product_name: @product.name,
+            created_at: @purchase.created_at,
+            variants: "",
+            custom_fields: [],
+            quantity: 1,
+            refunded: false,
+            chargebacked: false,
+            email: @purchase.email,
+            seller_id: ObfuscateIds.encrypt(@purchase.seller.id),
+            product_id: ObfuscateIds.encrypt(@product.id),
+            permalink: @product.general_permalink,
+            product_permalink: @product.long_url,
+            short_product_id: @product.unique_permalink,
+            price: @purchase.price_cents,
+            currency: @product.price_currency_type,
+            order_number: @purchase.external_id_numeric,
+            sale_id: ObfuscateIds.encrypt(@purchase.id),
+            sale_timestamp: @purchase.created_at,
+            license_key: @purchase.license.serial,
+            is_gift_receiver_purchase: false,
+            disputed: false,
+            dispute_won: false,
+            gumroad_fee: @purchase.fee_cents,
+            discover_fee_charged: @purchase.was_discover_fee_charged,
+            can_contact: @purchase.can_contact,
+            referrer: @purchase.referrer,
+            card: {
+              bin: nil,
+              expiry_month: @purchase.card_expiry_month,
+              expiry_year: @purchase.card_expiry_year,
+              type: @purchase.card_type,
+              visual: @purchase.card_visual,
+            }
+          }
+        }.as_json)
       end
 
       it "returns successful response when product permalink is passed via `link_id` param" do
@@ -481,45 +481,45 @@ describe Api::V2::LicensesController do
         expect(response).to have_http_status(:ok)
         @purchase.reload
         expect(response.parsed_body).to eq({
-                                             success: true,
-                                             uses: 1,
-                                             purchase: {
-                                               id: ObfuscateIds.encrypt(@purchase.id),
-                                               product_name: @product.name,
-                                               created_at: @purchase.created_at,
-                                               variants: "",
-                                               custom_fields: [],
-                                               quantity: 1,
-                                               refunded: false,
-                                               chargebacked: false,
-                                               email: @purchase.email,
-                                               seller_id: ObfuscateIds.encrypt(@purchase.seller.id),
-                                               product_id: ObfuscateIds.encrypt(@product.id),
-                                               permalink: @product.general_permalink,
-                                               product_permalink: @product.long_url,
-                                               short_product_id: @product.unique_permalink,
-                                               price: @purchase.price_cents,
-                                               currency: @product.price_currency_type,
-                                               order_number: @purchase.external_id_numeric,
-                                               sale_id: ObfuscateIds.encrypt(@purchase.id),
-                                               sale_timestamp: @purchase.created_at,
-                                               license_key: @purchase.license.serial,
-                                               is_gift_receiver_purchase: false,
-                                               disputed: false,
-                                               dispute_won: false,
-                                               gumroad_fee: @purchase.fee_cents,
-                                               discover_fee_charged: @purchase.was_discover_fee_charged,
-                                               can_contact: @purchase.can_contact,
-                                               referrer: @purchase.referrer,
-                                               card: {
-                                                 bin: nil,
-                                                 expiry_month: @purchase.card_expiry_month,
-                                                 expiry_year: @purchase.card_expiry_year,
-                                                 type: @purchase.card_type,
-                                                 visual: @purchase.card_visual,
-                                               }
-                                             }
-                                           }.as_json)
+          success: true,
+          uses: 1,
+          purchase: {
+            id: ObfuscateIds.encrypt(@purchase.id),
+            product_name: @product.name,
+            created_at: @purchase.created_at,
+            variants: "",
+            custom_fields: [],
+            quantity: 1,
+            refunded: false,
+            chargebacked: false,
+            email: @purchase.email,
+            seller_id: ObfuscateIds.encrypt(@purchase.seller.id),
+            product_id: ObfuscateIds.encrypt(@product.id),
+            permalink: @product.general_permalink,
+            product_permalink: @product.long_url,
+            short_product_id: @product.unique_permalink,
+            price: @purchase.price_cents,
+            currency: @product.price_currency_type,
+            order_number: @purchase.external_id_numeric,
+            sale_id: ObfuscateIds.encrypt(@purchase.id),
+            sale_timestamp: @purchase.created_at,
+            license_key: @purchase.license.serial,
+            is_gift_receiver_purchase: false,
+            disputed: false,
+            dispute_won: false,
+            gumroad_fee: @purchase.fee_cents,
+            discover_fee_charged: @purchase.was_discover_fee_charged,
+            can_contact: @purchase.can_contact,
+            referrer: @purchase.referrer,
+            card: {
+              bin: nil,
+              expiry_month: @purchase.card_expiry_month,
+              expiry_year: @purchase.card_expiry_year,
+              type: @purchase.card_type,
+              visual: @purchase.card_visual,
+            }
+          }
+        }.as_json)
       end
     end
 
@@ -546,9 +546,9 @@ describe Api::V2::LicensesController do
               message = "The 'product_id' parameter is required to verify the license for this product. "
               message += "Please set 'product_id' to '#{@product.external_id}' in the request."
               expect(response.parsed_body).to eq({
-                                                   success: false,
-                                                   message:
-                                                 }.as_json)
+                success: false,
+                message:
+              }.as_json)
             end
 
             context "when the permalink doesn't match with the product" do
@@ -559,9 +559,9 @@ describe Api::V2::LicensesController do
                 message = "The 'product_id' parameter is required to verify the license for this product. "
                 message += "Please set 'product_id' to '#{@product.external_id}' in the request."
                 expect(response.parsed_body).to eq({
-                                                     success: false,
-                                                     message:
-                                                   }.as_json)
+                  success: false,
+                  message:
+                }.as_json)
               end
             end
           end
@@ -623,9 +623,10 @@ describe Api::V2::LicensesController do
         before do
           @app = create(:oauth_application, owner: create(:user))
           @token = create("doorkeeper/access_token", application: @app,
-                          resource_owner_id: @product.user.id,
-                          scopes: "edit_products")
+                                                     resource_owner_id: @product.user.id,
+                                                     scopes: "edit_products")
         end
+
 
         it "decreases the license uses count and returns the correct json when a valid product and license key are provided" do
           @license.increment!(:uses)
@@ -633,45 +634,45 @@ describe Api::V2::LicensesController do
           expect(response.code.to_i).to eq(200)
           @purchase.reload
           expect(response.parsed_body).to eq({
-                                               success: true,
-                                               uses: 0,
-                                               purchase: {
-                                                 id: ObfuscateIds.encrypt(@purchase.id),
-                                                 product_name: @product.name,
-                                                 created_at: @purchase.created_at,
-                                                 variants: "",
-                                                 custom_fields: [],
-                                                 quantity: 1,
-                                                 refunded: false,
-                                                 chargebacked: false,
-                                                 email: @purchase.email,
-                                                 seller_id: ObfuscateIds.encrypt(@purchase.seller.id),
-                                                 product_id: ObfuscateIds.encrypt(@product.id),
-                                                 permalink: @product.general_permalink,
-                                                 product_permalink: @product.long_url,
-                                                 short_product_id: @product.unique_permalink,
-                                                 price: @purchase.price_cents,
-                                                 currency: @product.price_currency_type,
-                                                 order_number: @purchase.external_id_numeric,
-                                                 sale_id: ObfuscateIds.encrypt(@purchase.id),
-                                                 sale_timestamp: @purchase.created_at,
-                                                 license_key: @purchase.license.serial,
-                                                 is_gift_receiver_purchase: false,
-                                                 disputed: false,
-                                                 dispute_won: false,
-                                                 gumroad_fee: @purchase.fee_cents,
-                                                 discover_fee_charged: @purchase.was_discover_fee_charged,
-                                                 can_contact: @purchase.can_contact,
-                                                 referrer: @purchase.referrer,
-                                                 card: {
-                                                   bin: nil,
-                                                   expiry_month: @purchase.card_expiry_month,
-                                                   expiry_year: @purchase.card_expiry_year,
-                                                   type: @purchase.card_type,
-                                                   visual: @purchase.card_visual,
-                                                 }
-                                               }
-                                             }.as_json)
+            success: true,
+            uses: 0,
+            purchase: {
+              id: ObfuscateIds.encrypt(@purchase.id),
+              product_name: @product.name,
+              created_at: @purchase.created_at,
+              variants: "",
+              custom_fields: [],
+              quantity: 1,
+              refunded: false,
+              chargebacked: false,
+              email: @purchase.email,
+              seller_id: ObfuscateIds.encrypt(@purchase.seller.id),
+              product_id: ObfuscateIds.encrypt(@product.id),
+              permalink: @product.general_permalink,
+              product_permalink: @product.long_url,
+              short_product_id: @product.unique_permalink,
+              price: @purchase.price_cents,
+              currency: @product.price_currency_type,
+              order_number: @purchase.external_id_numeric,
+              sale_id: ObfuscateIds.encrypt(@purchase.id),
+              sale_timestamp: @purchase.created_at,
+              license_key: @purchase.license.serial,
+              is_gift_receiver_purchase: false,
+              disputed: false,
+              dispute_won: false,
+              gumroad_fee: @purchase.fee_cents,
+              discover_fee_charged: @purchase.was_discover_fee_charged,
+              can_contact: @purchase.can_contact,
+              referrer: @purchase.referrer,
+              card: {
+                bin: nil,
+                expiry_month: @purchase.card_expiry_month,
+                expiry_year: @purchase.card_expiry_year,
+                type: @purchase.card_type,
+                visual: @purchase.card_visual,
+              }
+            }
+          }.as_json)
         end
 
         it "does not decrease the license uses count if the uses count is 0" do
@@ -682,8 +683,8 @@ describe Api::V2::LicensesController do
 
         it "returns a 404 error if the license user is not the current resource owner" do
           token = create("doorkeeper/access_token", application: @app,
-                         resource_owner_id: create(:user).id,
-                         scopes: "edit_products")
+                                                    resource_owner_id: create(:user).id,
+                                                    scopes: "edit_products")
           put :decrement_uses_count, params: { access_token: token.token, license_key: @purchase.license.serial }.merge(@product_identifier)
           expect(response.code.to_i).to eq(404)
         end
