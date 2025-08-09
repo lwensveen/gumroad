@@ -65,50 +65,49 @@ class CreatorAnalytics::Sales
   end
 
   private
-
-  def paginate(sources:)
-    after_key = nil
-    body = build_body(sources)
-    buckets = []
-    loop do
-      body[:aggs][:composite_agg][:composite][:after] = after_key if after_key
-      response_agg = Purchase.search(body).aggregations.composite_agg
-      buckets += response_agg.buckets
-      break if response_agg.buckets.size < ES_MAX_BUCKET_SIZE
-      after_key = response_agg["after_key"]
+    def paginate(sources:)
+      after_key = nil
+      body = build_body(sources)
+      buckets = []
+      loop do
+        body[:aggs][:composite_agg][:composite][:after] = after_key if after_key
+        response_agg = Purchase.search(body).aggregations.composite_agg
+        buckets += response_agg.buckets
+        break if response_agg.buckets.size < ES_MAX_BUCKET_SIZE
+        after_key = response_agg["after_key"]
+      end
+      buckets
     end
-    buckets
-  end
 
-  def build_body(sources)
-    {
-      query: @query,
-      size: 0,
-      aggs: {
-        composite_agg: {
-          composite: { size: ES_MAX_BUCKET_SIZE, sources: },
-          aggs: {
-            price_cents_total: { sum: { field: "price_cents" } },
-            amount_refunded_cents_total: { sum: { field: "amount_refunded_cents" } },
-            chargedback_agg: {
-              filter: { term: { not_chargedback_or_chargedback_reversed: false } },
-              aggs: {
-                price_cents_total: { sum: { field: "price_cents" } },
-              }
-            },
-            total: {
-              bucket_script: {
-                buckets_path: {
-                  price_cents_total: "price_cents_total",
-                  amount_refunded_cents_total: "amount_refunded_cents_total",
-                  chargedback_price_cents_total: "chargedback_agg>price_cents_total",
-                },
-                script: "params.price_cents_total - params.amount_refunded_cents_total - params.chargedback_price_cents_total"
+    def build_body(sources)
+      {
+        query: @query,
+        size: 0,
+        aggs: {
+          composite_agg: {
+            composite: { size: ES_MAX_BUCKET_SIZE, sources: },
+            aggs: {
+              price_cents_total: { sum: { field: "price_cents" } },
+              amount_refunded_cents_total: { sum: { field: "amount_refunded_cents" } },
+              chargedback_agg: {
+                filter: { term: { not_chargedback_or_chargedback_reversed: false } },
+                aggs: {
+                  price_cents_total: { sum: { field: "price_cents" } },
+                }
+              },
+              total: {
+                bucket_script: {
+                  buckets_path: {
+                    price_cents_total: "price_cents_total",
+                    amount_refunded_cents_total: "amount_refunded_cents_total",
+                    chargedback_price_cents_total: "chargedback_agg>price_cents_total",
+                  },
+                  script: "params.price_cents_total - params.amount_refunded_cents_total - params.chargedback_price_cents_total"
+                }
               }
             }
           }
         }
       }
-    }
-  end
+    end
 end
