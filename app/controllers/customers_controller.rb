@@ -120,7 +120,7 @@ class CustomersController < Sellers::BaseController
       search_options = {
         seller: current_seller,
         country: Compliance::Countries.historical_names(country || params[:bought_from]).presence,
-        state: Purchase::NON_GIFT_SUCCESS_STATES,
+        state: Purchase::ALL_SUCCESS_STATES,
         any_products_or_variants: {},
         exclude_purchasers_of_product: excluded_products,
         exclude_purchasers_of_variant: excluded_variants,
@@ -128,7 +128,7 @@ class CustomersController < Sellers::BaseController
         exclude_giftees: false,
         exclude_bundle_product_purchases: false,
         exclude_commission_completion_purchases: true,
-        from: params[:page].to_i * CUSTOMERS_PER_PAGE,
+        from: [params[:page].to_i, 0].max * CUSTOMERS_PER_PAGE,
         size: CUSTOMERS_PER_PAGE,
         sort: [{ created_at: { order: :desc } }, { id: { order: :desc } }],
         track_total_hits: true,
