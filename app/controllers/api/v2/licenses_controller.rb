@@ -55,28 +55,19 @@ class Api::V2::LicensesController < Api::V2::BaseController
   end
 
   def fetch_valid_license
-    if params[:product_id].present?
-      product = Link.find_by_external_id(params[:product_id])
-      @license = product.licenses.find_by(serial: params[:license_key]) if product.present?
-    else
-      @license = License.find_by(serial: params[:license_key])
-      product = @license&.link
-    end
-
-    if @license&.purchase&.is_gift_receiver_purchase?
-      product = @license.purchase.link
-    end
+    product = nil
 
     if params[:product_id].present?
-      product = Link.find_by_external_id(params[:product_id])
+      product  = Link.find_by_external_id(params[:product_id])
       @license = product&.licenses&.find_by(serial: params[:license_key])
-
-      if @license.blank?
-        return render json: { success: false, message: "That license does not exist for the provided product." }, status: :not_found
-      end
     else
       @license = License.find_by(serial: params[:license_key])
-      product = @license&.link
+      # Respect gifted purchases: the “product” to verify against is the giftee’s link
+      product = if @license&.purchase&.is_gift_receiver_purchase?
+                  @license.purchase.link
+                else
+                  @license&.link
+                end
     end
 
     # Force sellers to use product_id param in license verification request
@@ -112,7 +103,7 @@ class Api::V2::LicensesController < Api::V2::BaseController
     elsif @license.imported_customer.present?
       json[:imported_customer] = @license.imported_customer.as_json(without_license_key: true)
     end
-    render json:
+    render json: json
   end
 
   def clean_params
